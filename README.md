@@ -2,14 +2,14 @@
 
 一个使用 TypeScript 编写的 AI 简历解析命令行工具。它可以读取本地 PDF 简历、提取结构化候选人信息，并根据岗位描述（JD）生成匹配评分与面试问题。
 
-项目提供确定性的 `--mock` 模式，不配置 API Key 也能完整演示。非 mock 模式使用 OpenAI Responses API 的 Structured Outputs，并在本地再次使用 Zod 校验结果。
+项目提供确定性的 `--mock` 模式，不配置 API Key 也能完整演示。非 mock 模式默认使用 DeepSeek，也可以通过环境变量切换到 OpenAI；两个提供商的结果都会在本地使用 Zod 校验。
 
 ## 技术选型
 
 - Node.js 20+、TypeScript、ESM
 - Commander：CLI 参数与帮助信息
 - pdf-parse：PDF 文本提取
-- OpenAI Node SDK：AI 结构化提取和评分
+- OpenAI Node SDK：调用 DeepSeek 的兼容接口和 OpenAI 原生接口
 - Zod：运行时数据校验
 - Vitest：单元与 CLI 集成测试
 - tsup：生成可执行的 ESM 包
@@ -20,7 +20,7 @@
 src/
   commands/     # parse、extract、score 用例编排
   schemas/      # 候选人和评分结果的数据契约
-  services/     # PDF、JD、OpenAI 与 mock 适配器
+  services/     # PDF、JD、DeepSeek、OpenAI 与 mock 适配器
   utils/        # 输出、日志和 JSON 修复
   cli.ts        # 可执行入口
   program.ts    # Commander 程序与退出码处理
@@ -48,16 +48,25 @@ node dist/cli.js --help
 
 ## 环境变量
 
-只有非 mock 的 `extract` 和 `score` 命令需要 API Key：
+只有非 mock 的 `extract` 和 `score` 命令需要 API Key。默认提供商是 DeepSeek：
 
 ```bash
-export OPENAI_API_KEY="your_api_key_here"
+export AI_PROVIDER="deepseek"
+export DEEPSEEK_API_KEY="your_deepseek_api_key_here"
+export DEEPSEEK_MODEL="deepseek-v4-flash" # 可选
+```
+
+切换到 OpenAI：
+
+```bash
+export AI_PROVIDER="openai"
+export OPENAI_API_KEY="your_openai_api_key_here"
 export OPENAI_MODEL="gpt-5.6" # 可选
 ```
 
-项目提供 [.env.example](./.env.example) 作为配置清单。CLI 不会自动读取 `.env`，避免在未知目录隐式加载密钥；可以由 shell、Docker `--env-file` 或部署系统注入变量。
+项目提供 [.env.example](./.env.example) 作为配置清单。CLI 不会自动读取 `.env`，避免在未知目录隐式加载密钥；可以由 shell、Docker `--env-file` 或部署系统注入变量。`--mock` 会绕过提供商选择和 Key 检查。
 
-默认模型依据当前 OpenAI Structured Outputs 指南设置为 `gpt-5.6`。如需控制成本或使用组织内允许的模型，可通过 `OPENAI_MODEL` 覆盖，但该模型必须支持 Structured Outputs。
+DeepSeek 默认使用 `deepseek-v4-flash` 和官方固定地址 `https://api.deepseek.com`，通过 Chat Completions JSON Output 返回数据；OpenAI 使用 Responses API Structured Outputs，默认模型为 `gpt-5.6`。工具不会在提供商失败时自动切换到另一个 API，避免意外计费或改变简历数据流向。
 
 ## CLI 命令
 
@@ -166,7 +175,9 @@ docker run --rm --env-file .env -v "$PWD:/data:ro" resume-cli score /data/resume
 
 - 三个必需命令：`parse`、`extract`、`score`
 - PDF、JD 和 AI 调用的分层错误提示与稳定退出码
-- OpenAI Structured Outputs 与本地 Zod 二次校验
+- DeepSeek JSON Output、有限 JSON 修复与本地 Zod 校验
+- OpenAI Responses Structured Outputs 与本地 Zod 二次校验
+- `AI_PROVIDER` 双提供商选择，默认 DeepSeek、无自动回退
 - `--mock` 离线演示模式
 - `--output` 保存文本或 JSON
 - Markdown 围栏、外围文字、BOM 和尾随逗号的有限 JSON 修复工具
@@ -175,7 +186,7 @@ docker run --rm --env-file .env -v "$PWD:/data:ro" resume-cli score /data/resume
 
 ## 安全与隐私
 
-- 简历和 JD 只在本地读取；只有非 mock 命令会把其文本发送给所配置的 OpenAI API。
+- 简历和 JD 只在本地读取；非 mock 命令会把文本发送给 `AI_PROVIDER` 当前选择的 DeepSeek 或 OpenAI API。
 - 日志不会输出 API Key 或完整简历正文。
 - 系统提示将简历和 JD 视为不可信数据，忽略其中试图改变分析规则的指令。
 - 不要将真实 API Key、真实简历或输出结果提交到公开仓库。
@@ -185,7 +196,7 @@ docker run --rm --env-file .env -v "$PWD:/data:ro" resume-cli score /data/resume
 - 只支持含文本层的 PDF；扫描件或图片 PDF 需要先执行 OCR。
 - mock 模式是关键词规则演示，不代表真实招聘结论。
 - 不支持 DOCX、图片简历、多语言 OCR、Web UI、数据库或候选人长期存储。
-- 非 mock 结果会受到模型权限、额度、网络与输入质量影响。
+- 非 mock 结果会受到所选提供商的模型权限、额度、网络与输入质量影响。
 
 ## 退出码
 

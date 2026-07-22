@@ -1,5 +1,7 @@
 # AI 简历解析 CLI 设计规格
 
+> 后续变更：AI 传输层已由 [DeepSeek 与 OpenAI 双提供商设计](./2026-07-22-dual-ai-provider-design.md) 扩展。后续规格取代本文中的 OpenAI 单提供商描述，但 CLI、Schema、错误边界和测试原则保持不变。
+
 ## 目标
 
 使用 TypeScript 实现一个可安装、可测试、可离线演示的 `resume-cli`。工具读取本地 PDF 简历，输出简历文本、结构化候选人信息，并根据岗位描述生成 0–100 分的匹配评分。
