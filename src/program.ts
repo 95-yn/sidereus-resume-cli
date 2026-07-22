@@ -113,7 +113,15 @@ function createProgramWithScope(
     .option('-v, --verbose', '输出安全的诊断日志')
     .option('--no-progress', '关闭动态进度提示')
     .option('--env-file <path>', '从指定文件加载环境变量（默认读取当前目录的 .env）')
-    .configureOutput({ writeOut: io.stdout, writeErr: io.stderr })
+    .configureOutput({
+      writeOut: io.stdout,
+      writeErr: io.stderr,
+      outputError: (message, write) => {
+        const endsWithNewline = message.endsWith('\n');
+        const body = endsWithNewline ? message.slice(0, -1) : message;
+        write(`${terminalSafeDisplay(body)}${endsWithNewline ? '\n' : ''}`);
+      },
+    })
     .showHelpAfterError()
     .exitOverride();
 

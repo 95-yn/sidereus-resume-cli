@@ -188,6 +188,35 @@ describe('CLI', () => {
     expect(streams.stderr.mock.calls.join('\n')).toContain('--jd');
   });
 
+  it('keeps ordinary unknown-option errors readable with help guidance', async () => {
+    const streams = io();
+
+    expect(await runCli(['parse', 'resume.pdf', '--unknown'], dependencies(), streams)).toBe(2);
+    const stderr = streams.stderr.mock.calls.flat().join('');
+    expect(stderr).toContain("error: unknown option '--unknown'");
+    expect(stderr).toContain('Usage: resume-cli parse');
+  });
+
+  it('sanitizes terminal controls in Commander parser errors', async () => {
+    const streams = io();
+
+    expect(await runCli(
+      ['parse', 'resume.pdf', unsafeOption],
+      dependencies(),
+      streams,
+    )).toBe(2);
+
+    const stderr = streams.stderr.mock.calls.flat().join('');
+    expect(stderr).toContain(
+      "error: unknown option '--bad\\n\\u001B]0;pwn\\u0007\\u009B31m\\u202E'",
+    );
+    expect(stderr).toContain('Usage: resume-cli parse');
+    expect(stderr).not.toContain(unsafeOption);
+    for (const character of ['\u001b', '\u0007', '\u009b', '\u202e']) {
+      expect(stderr).not.toContain(character);
+    }
+  });
+
   it('dispatches extract mock mode and keeps real stdout JSON clean', async () => {
     const deps = dependencies();
     deps.writeResult = writeResult;
@@ -381,3 +410,4 @@ describe('CLI', () => {
 
 const unsafePath = 'resume\n\u001b]0;pwn\u0007\u009b31m\u202e.pdf';
 const safePath = 'resume\\n\\u001B]0;pwn\\u0007\\u009B31m\\u202E.pdf';
+const unsafeOption = '--bad\n\u001b]0;pwn\u0007\u009b31m\u202e';
