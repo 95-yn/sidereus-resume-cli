@@ -3,6 +3,8 @@
 > 后续变更：AI 传输层已由 [DeepSeek 与 OpenAI 双提供商设计](./2026-07-22-dual-ai-provider-design.md) 扩展。后续规格取代本文中的 OpenAI 单提供商描述，但 CLI、Schema、错误边界和测试原则保持不变。
 >
 > 配置加载行为已由 [CLI 环境配置加载设计](./2026-07-22-env-loading-design.md) 扩展：CLI 默认读取调用目录的 `.env`，并支持显式 `--env-file`；父进程变量保持最高优先级。
+>
+> 打包与安装行为由 [Resume CLI 分发与安装设计](./2026-07-22-cli-distribution-design.md) 扩展：npm、npx、Git 与 tarball 安装的构建时机、文件边界和发布流程以该规格为准。
 
 ## 目标
 

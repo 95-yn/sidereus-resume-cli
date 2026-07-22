@@ -29,9 +29,40 @@ examples/       # 示例 JD；演示脚本会在此生成 PDF
 scripts/        # 创建演示 PDF
 ```
 
-## 安装
+## 安装与直接使用
 
 要求 Node.js 20 或更高版本。
+
+包发布到 npm 后，普通用户可以全局安装；npm 会自动把 `resume-cli` 命令加入当前 Node.js 安装对应的可执行目录：
+
+```bash
+npm install -g sidereus-resume-cli
+resume-cli --help
+```
+
+只想临时运行、不保留全局安装时，可以使用：
+
+```bash
+npx sidereus-resume-cli --help
+```
+
+如果拿到发布者生成的 tarball，可以直接安装该文件：
+
+```bash
+npm install -g ./sidereus-resume-cli-1.0.0.tgz
+resume-cli --version
+```
+
+也可以从真实 GitHub 仓库安装，把示例中的所有者和仓库名替换为实际值：
+
+```bash
+npm install -g github:<owner>/<repository>
+resume-cli --help
+```
+
+Git 安装会通过 `prepare` 自动构建 `dist`；npm 发布包和 tarball 已经包含构建产物。npm 包本身不能强制用户执行全局安装，因此需要直接使用 `resume-cli` 时应保留 `-g`，或者选择 `npx`。
+
+在源码仓库中进行本地开发时使用：
 
 ```bash
 npm ci
@@ -178,6 +209,23 @@ npm run check
 ```
 
 测试覆盖文件异常、PDF 签名与空文本、Schema 边界、AI 错误映射、mock 稳定性、输出文件以及 CLI 参数和退出码。
+
+## 发布到 npm（维护者）
+
+发布是显式的维护操作，项目不会在安装或构建时自动发布。首次发布前应先确认 npm 上的包名仍可用；仓库拥有真实远程地址后，再向 `package.json` 添加准确的 `repository`、`homepage` 和 `bugs` 元数据。
+
+```bash
+npm login
+npm whoami
+npm version patch # 或 minor / major
+npm pack --dry-run
+npm pack
+npm install -g ./sidereus-resume-cli-<version>.tgz
+resume-cli --version
+npm publish --access public
+```
+
+`prepack` 会自动执行 lint、类型检查、测试和构建。建议在发布前检查 tarball 文件清单并完成本地全局安装冒烟测试。`npm publish` 会产生外部且不可撤销的版本记录，因此本项目不会代替维护者执行该命令。
 
 ## Docker
 
