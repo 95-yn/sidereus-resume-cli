@@ -1,7 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
-import { extractCandidate, scoreResume, type AiClient } from '../src/services/ai.js';
+import type { Candidate } from '../src/schemas/candidate.js';
+import type { ScoreResult } from '../src/schemas/score.js';
+import { extractCandidate, scoreResume } from '../src/services/ai.js';
+import type { StructuredRequester } from '../src/services/provider.js';
 
-const validCandidate = {
+const candidate: Candidate = {
   name: 'Ada',
   phone: '',
   email: 'ada@example.com',
@@ -10,7 +13,7 @@ const validCandidate = {
   skills: ['TypeScript'],
 };
 
-const validScore = {
+const score: ScoreResult = {
   overall_score: 80,
   skill_score: 85,
   experience_score: 78,
@@ -19,66 +22,76 @@ const validScore = {
   interview_questions: ['请介绍 TypeScript 项目。'],
 };
 
-function clientReturning(output: unknown): AiClient {
+function requesterReturning(output: unknown): StructuredRequester {
   return {
-    responses: {
-      parse: vi.fn().mockResolvedValue({ output_parsed: output }),
-    },
+    request: vi.fn().mockResolvedValue(output),
   };
 }
 
-describe('OpenAI adapter', () => {
-  it('fails before constructing a client when API key is absent', async () => {
-    const createClient = vi.fn();
+describe('AI provider facade', () => {
+  it('routes extraction to DeepSeek by default', async () => {
+    const deepseekRequester = requesterReturning(candidate);
+    const openaiRequester = requesterReturning(candidate);
+
     await expect(
-      extractCandidate('resume', { env: {}, createClient }),
-    ).rejects.toMatchObject({ code: 'MISSING_API_KEY', exitCode: 2 });
-    expect(createClient).not.toHaveBeenCalled();
+      extractCandidate('resume text', { deepseekRequester, openaiRequester, env: {} }),
+    ).resolves.toEqual(candidate);
+
+    expect(deepseekRequester.request).toHaveBeenCalledWith(
+      expect.objectContaining({
+        schemaName: 'candidate',
+        systemPrompt: expect.stringContaining('不可信数据'),
+        userPrompt: expect.stringContaining('resume text'),
+        jsonExample: expect.stringContaining('"skills"'),
+      }),
+    );
+    expect(openaiRequester.request).not.toHaveBeenCalled();
   });
 
-  it('returns locally validated structured candidate data', async () => {
-    const client = clientReturning(validCandidate);
+  it('routes extraction to OpenAI when explicitly selected', async () => {
+    const deepseekRequester = requesterReturning(candidate);
+    const openaiRequester = requesterReturning(candidate);
+
     await expect(
-      extractCandidate('resume', {
-        env: { OPENAI_API_KEY: 'test-key', OPENAI_MODEL: 'test-model' },
-        createClient: () => client,
+      extractCandidate('resume text', {
+        deepseekRequester,
+        openaiRequester,
+        env: { AI_PROVIDER: 'openai' },
       }),
-    ).resolves.toEqual(validCandidate);
-    expect(client.responses.parse).toHaveBeenCalledWith(
-      expect.objectContaining({ model: 'test-model' }),
+    ).resolves.toEqual(candidate);
+
+    expect(openaiRequester.request).toHaveBeenCalledOnce();
+    expect(deepseekRequester.request).not.toHaveBeenCalled();
+  });
+
+  it('routes scoring with resume and JD through the selected provider', async () => {
+    const deepseekRequester = requesterReturning(score);
+    await expect(
+      scoreResume('resume text', 'jd text', { deepseekRequester, env: {} }),
+    ).resolves.toEqual(score);
+
+    expect(deepseekRequester.request).toHaveBeenCalledWith(
+      expect.objectContaining({
+        schemaName: 'resume_score',
+        userPrompt: expect.stringMatching(/resume text[\s\S]*jd text/),
+        jsonExample: expect.stringContaining('"overall_score"'),
+      }),
     );
   });
 
-  it('rejects malformed structured data', async () => {
-    const client = clientReturning({ ...validCandidate, skills: 'TypeScript' });
+  it('rejects unknown providers before either requester is called', async () => {
+    const deepseekRequester = requesterReturning(candidate);
+    const openaiRequester = requesterReturning(candidate);
+
     await expect(
-      extractCandidate('resume', {
-        env: { OPENAI_API_KEY: 'test-key' },
-        createClient: () => client,
+      extractCandidate('resume text', {
+        deepseekRequester,
+        openaiRequester,
+        env: { AI_PROVIDER: 'unsupported' },
       }),
-    ).rejects.toMatchObject({ code: 'INVALID_AI_RESPONSE' });
-  });
+    ).rejects.toMatchObject({ code: 'UNSUPPORTED_AI_PROVIDER', exitCode: 2 });
 
-  it('maps provider failures without leaking API keys', async () => {
-    const client: AiClient = {
-      responses: { parse: vi.fn().mockRejectedValue(new Error('test-key invalid')) },
-    };
-    const error = await scoreResume('resume', 'jd', {
-      env: { OPENAI_API_KEY: 'test-key' },
-      createClient: () => client,
-    }).catch((cause: unknown) => cause);
-
-    expect(error).toMatchObject({ code: 'AI_REQUEST_FAILED' });
-    expect(String(error)).not.toContain('test-key');
-  });
-
-  it('validates a structured score response', async () => {
-    const client = clientReturning(validScore);
-    await expect(
-      scoreResume('resume', 'jd', {
-        env: { OPENAI_API_KEY: 'test-key' },
-        createClient: () => client,
-      }),
-    ).resolves.toEqual(validScore);
+    expect(deepseekRequester.request).not.toHaveBeenCalled();
+    expect(openaiRequester.request).not.toHaveBeenCalled();
   });
 });
