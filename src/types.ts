@@ -1,6 +1,7 @@
 import type { Candidate } from './schemas/candidate.js';
 import type { ScoreResult } from './schemas/score.js';
 import type { OutputOptions } from './utils/output.js';
+import type { Progress } from './utils/progress.js';
 
 export interface CommandIo {
   stdout?: OutputOptions['stdout'];
@@ -9,6 +10,7 @@ export interface CommandIo {
 
 export interface CommonCommandOptions extends CommandIo {
   output?: string;
+  progress?: Progress;
 }
 
 export type ReadPdf = (path: string) => Promise<string>;

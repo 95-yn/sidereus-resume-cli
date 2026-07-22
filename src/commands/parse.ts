@@ -1,4 +1,5 @@
 import type { CommonCommandOptions, ReadPdf, WriteResult } from '../types.js';
+import { silentProgress } from '../utils/progress.js';
 
 export interface ParseDependencies {
   readPdf: ReadPdf;
@@ -10,8 +11,28 @@ export async function runParse(
   options: CommonCommandOptions,
   dependencies: ParseDependencies,
 ): Promise<void> {
-  const text = await dependencies.readPdf(pdfPath);
-  await dependencies.writeResult(text, outputOptions(options));
+  const progress = options.progress ?? silentProgress;
+  let stopped = false;
+  const stopProgress = () => {
+    if (stopped) return;
+    stopped = true;
+    progress.stop();
+  };
+  progress.start('正在读取并解析 PDF…');
+
+  try {
+    const text = await dependencies.readPdf(pdfPath);
+    stopProgress();
+    await dependencies.writeResult(text, outputOptions(options));
+    progress.succeed('完成');
+  } catch (error) {
+    try {
+      stopProgress();
+    } catch {
+      // Progress cleanup must not replace the command failure.
+    }
+    throw error;
+  }
 }
 
 function outputOptions(options: CommonCommandOptions) {
