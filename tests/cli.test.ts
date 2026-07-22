@@ -4,6 +4,7 @@ import { runCli, type ProgramDependencies } from '../src/program.js';
 
 function dependencies(): ProgramDependencies {
   return {
+    loadEnvironment: vi.fn().mockResolvedValue(undefined),
     readPdf: vi.fn().mockResolvedValue('resume text'),
     readJd: vi.fn().mockResolvedValue('jd text'),
     extractCandidate: vi.fn().mockResolvedValue({
@@ -43,10 +44,62 @@ describe('CLI', () => {
     ['extract', '--help'],
     ['score', '--help'],
   ])('renders help for %s', async (...args) => {
+    const deps = dependencies();
     const streams = io();
-    const exitCode = await runCli(args, dependencies(), streams);
+    const exitCode = await runCli(args, deps, streams);
     expect(exitCode).toBe(0);
     expect(streams.stdout.mock.calls.join('\n')).toContain('Usage:');
+    expect(deps.loadEnvironment).not.toHaveBeenCalled();
+  });
+
+  it('loads the default environment before running a command', async () => {
+    const deps = dependencies();
+    const streams = io();
+
+    expect(await runCli(['extract', 'resume.pdf', '--mock'], deps, streams)).toBe(0);
+
+    expect(deps.loadEnvironment).toHaveBeenCalledWith({
+      cwd: process.cwd(),
+      env: process.env,
+    });
+    expect(vi.mocked(deps.loadEnvironment).mock.invocationCallOrder[0]).toBeLessThan(
+      vi.mocked(deps.readPdf).mock.invocationCallOrder[0]!,
+    );
+  });
+
+  it('passes an explicit global env file to the loader', async () => {
+    const deps = dependencies();
+    const streams = io();
+
+    expect(
+      await runCli(
+        ['--env-file', 'config/resume.env', 'extract', 'resume.pdf', '--mock'],
+        deps,
+        streams,
+      ),
+    ).toBe(0);
+    expect(deps.loadEnvironment).toHaveBeenCalledWith({
+      cwd: process.cwd(),
+      env: process.env,
+      envFile: 'config/resume.env',
+    });
+  });
+
+  it('maps an environment loading error to exit code 2', async () => {
+    const deps = dependencies();
+    deps.loadEnvironment = vi.fn().mockRejectedValue(
+      new AppError('配置文件不存在', {
+        code: 'ENV_FILE_NOT_FOUND',
+        exitCode: 2,
+      }),
+    );
+    const streams = io();
+
+    expect(
+      await runCli(['--env-file', 'missing.env', 'parse', 'resume.pdf'], deps, streams),
+    ).toBe(2);
+    expect(deps.readPdf).not.toHaveBeenCalled();
+    expect(streams.stderr).toHaveBeenCalledWith(expect.stringContaining('配置文件不存在'));
   });
 
   it('treats a missing JD option as a user error', async () => {

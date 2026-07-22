@@ -4,6 +4,7 @@ import { runParse } from './commands/parse.js';
 import { runScore } from './commands/score.js';
 import { toAppError } from './errors.js';
 import { extractCandidate, scoreResume } from './services/ai.js';
+import { loadEnvironment } from './services/env.js';
 import { readJd } from './services/jd.js';
 import { mockExtract, mockScore } from './services/mock.js';
 import { readPdf } from './services/pdf.js';
@@ -20,6 +21,7 @@ import { createLogger } from './utils/logger.js';
 import { writeResult } from './utils/output.js';
 
 export interface ProgramDependencies {
+  loadEnvironment: typeof loadEnvironment;
   readPdf: ReadPdf;
   readJd: ReadJd;
   extractCandidate: ExtractCandidate;
@@ -35,6 +37,7 @@ export interface ProgramIo {
 }
 
 const defaultDependencies: ProgramDependencies = {
+  loadEnvironment,
   readPdf,
   readJd,
   extractCandidate,
@@ -59,9 +62,19 @@ export function createProgram(
     .description('解析 PDF 简历、提取结构化信息并进行 JD 匹配评分')
     .version('1.0.0')
     .option('-v, --verbose', '输出安全的诊断日志')
+    .option('--env-file <path>', '从指定文件加载环境变量（默认读取当前目录的 .env）')
     .configureOutput({ writeOut: io.stdout, writeErr: io.stderr })
     .showHelpAfterError()
     .exitOverride();
+
+  program.hook('preAction', async (rootCommand) => {
+    const { envFile } = rootCommand.opts<{ envFile?: string }>();
+    await dependencies.loadEnvironment({
+      cwd: process.cwd(),
+      env: process.env,
+      ...(envFile ? { envFile } : {}),
+    });
+  });
 
   program
     .command('parse')
