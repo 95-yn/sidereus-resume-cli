@@ -48,23 +48,42 @@ node dist/cli.js --help
 
 ## 环境变量
 
-只有非 mock 的 `extract` 和 `score` 命令需要 API Key。默认提供商是 DeepSeek：
+CLI 默认自动读取**当前工作目录**的 `.env`。先从示例创建本地配置：
 
 ```bash
-export AI_PROVIDER="deepseek"
-export DEEPSEEK_API_KEY="your_deepseek_api_key_here"
-export DEEPSEEK_MODEL="deepseek-v4-flash" # 可选
+cp .env.example .env
 ```
 
-切换到 OpenAI：
+编辑 `.env`；默认提供商是 DeepSeek：
 
 ```bash
-export AI_PROVIDER="openai"
-export OPENAI_API_KEY="your_openai_api_key_here"
-export OPENAI_MODEL="gpt-5.6" # 可选
+AI_PROVIDER=deepseek
+DEEPSEEK_API_KEY=your_deepseek_api_key_here
+DEEPSEEK_MODEL=deepseek-v4-flash
 ```
 
-项目提供 [.env.example](./.env.example) 作为配置清单。CLI 不会自动读取 `.env`，避免在未知目录隐式加载密钥；可以由 shell、Docker `--env-file` 或部署系统注入变量。`--mock` 会绕过提供商选择和 Key 检查。
+然后直接运行：
+
+```bash
+resume-cli extract ./resume.pdf
+```
+
+构建后或全局安装的 CLI 可以显式指定任意配置文件。全局选项建议放在子命令之前：
+
+```bash
+resume-cli --env-file "$HOME/.config/resume-cli.env" extract ./resume.pdf
+node dist/cli.js --env-file ./config/resume.env score ./resume.pdf --jd ./examples/jd.txt
+```
+
+切换到 OpenAI 时，在配置文件中设置：
+
+```bash
+AI_PROVIDER=openai
+OPENAI_API_KEY=your_openai_api_key_here
+OPENAI_MODEL=gpt-5.6
+```
+
+shell、CI 或容器已经设置的变量优先，不会被配置文件覆盖。默认 `.env` 不存在时会继续运行；显式 `--env-file` 不存在或不可读时会给出明确错误。`--mock` 不需要 API Key，`--help` 和 `--version` 也不会加载配置文件。
 
 DeepSeek 默认使用 `deepseek-v4-flash` 和官方固定地址 `https://api.deepseek.com`，通过 Chat Completions JSON Output 返回数据；OpenAI 使用 Responses API Structured Outputs，默认模型为 `gpt-5.6`。工具不会在提供商失败时自动切换到另一个 API，避免意外计费或改变简历数据流向。
 
@@ -167,6 +186,7 @@ docker build -t resume-cli .
 docker run --rm resume-cli --help
 docker run --rm -v "$PWD:/data:ro" resume-cli parse /data/resume.pdf
 docker run --rm --env-file .env -v "$PWD:/data:ro" resume-cli score /data/resume.pdf --jd /data/examples/jd.txt
+docker run --rm -v "$PWD:/data:ro" resume-cli --env-file /data/resume.env extract /data/resume.pdf
 ```
 
 也可以使用 `make install`、`make check`、`make build` 和 `make demo`。
@@ -178,6 +198,7 @@ docker run --rm --env-file .env -v "$PWD:/data:ro" resume-cli score /data/resume
 - DeepSeek JSON Output、有限 JSON 修复与本地 Zod 校验
 - OpenAI Responses Structured Outputs 与本地 Zod 二次校验
 - `AI_PROVIDER` 双提供商选择，默认 DeepSeek、无自动回退
+- 自动读取当前目录 `.env`，并支持全局 `--env-file <path>`
 - `--mock` 离线演示模式
 - `--output` 保存文本或 JSON
 - Markdown 围栏、外围文字、BOM 和尾随逗号的有限 JSON 修复工具
