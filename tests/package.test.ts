@@ -9,6 +9,7 @@ interface PackageManifest {
   keywords?: string[];
   publishConfig?: Record<string, string>;
   scripts?: Record<string, string>;
+  dependencies: Record<string, string>;
 }
 
 async function readManifest(): Promise<PackageManifest> {
@@ -34,6 +35,7 @@ describe('package distribution contract', () => {
     expect(manifest.scripts?.prepare).toBe('npm run build');
     expect(manifest.scripts?.prepack).toBe('npm run check');
     expect(manifest.scripts?.postinstall).toBeUndefined();
+    expect(manifest.dependencies.ora).toBe('^9.4.1');
   });
 
   it('includes discoverable CLI keywords', async () => {

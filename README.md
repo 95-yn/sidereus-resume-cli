@@ -180,6 +180,38 @@ resume-cli --verbose extract ./resume.pdf --mock
 
 诊断日志和保存提示写入 stderr，文本或 JSON 结果写入 stdout，便于管道调用。
 
+### 运行进度与路径提示
+
+在交互式终端中，CLI 会在 **stderr** 显示动态进度；业务文本和 JSON 始终只写入 **stdout**，因此重定向和管道得到的仍是纯文本或纯 JSON。阶段文案固定如下：
+
+- `parse`：`正在读取并解析 PDF…`
+- `extract`：`正在解析 PDF…` → `正在提取结构化信息…`
+- `score`：`正在读取简历与 JD…` → `正在分析匹配度…`
+
+成功时 stderr 会显示 `完成`。CI、非 TTY 终端、stdout 被管道或重定向时会自动关闭动态进度；也可显式关闭：
+
+```bash
+resume-cli --no-progress extract ./resume.pdf
+```
+
+当该选项的值为布尔值时，也接受放在子命令之后的写法，例如 `resume-cli extract ./resume.pdf --no-progress`。按下 Ctrl-C（SIGINT）或收到 SIGTERM 时，CLI 会先停止并清理活动进度，再继续信号处理。
+
+找不到 PDF、JD 或显式 `--env-file` 路径时，CLI 保留原始错误和退出码，并可能给出安全的本地候选与可复制的重试命令，例如：
+
+```text
+错误：PDF 文件不存在：./cv.pdf
+
+你可能想使用：
+1. ./简历/张三-cv.pdf
+2. ./resume.pdf
+
+重试：resume-cli extract "./简历/张三-cv.pdf"
+
+当前目录：/Users/example/interview
+```
+
+候选扫描最多向下两层、最多显示 3 个结果；会跳过隐藏目录以及 `.git`、`node_modules`、`dist`、`coverage`、`.next`、`build` 等生成目录。扫描只读取目录元数据和名称，候选文件绝不会被自动打开、读取或选中。PDF 只推荐 `.pdf`，JD 推荐 `.txt`、`.md`、`.markdown`，显式环境文件推荐 `.env` 或 `.env.*`；文件存在但内容无效时，仍会显示对应的 PDF、JD 或环境配置内容错误，而不会改为候选提示。
+
 ## 离线演示
 
 一条命令会生成示例 PDF，并依次执行三个核心流程：

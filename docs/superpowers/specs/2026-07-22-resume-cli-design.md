@@ -5,6 +5,8 @@
 > 配置加载行为已由 [CLI 环境配置加载设计](./2026-07-22-env-loading-design.md) 扩展：CLI 默认读取调用目录的 `.env`，并支持显式 `--env-file`；父进程变量保持最高优先级。
 >
 > 打包与安装行为由 [Resume CLI 分发与安装设计](./2026-07-22-cli-distribution-design.md) 扩展：npm、npx、Git 与 tarball 安装的构建时机、文件边界和发布流程以该规格为准。
+>
+> Loading、路径候选提示和中断清理由 [CLI Loading 与文件路径提示设计](./2026-07-22-cli-progress-file-guidance-design.md) 扩展并取代本文中相应的终端交互描述；本文保留原始命令和错误边界定义。
 
 ## 目标
 
