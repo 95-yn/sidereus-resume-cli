@@ -11,6 +11,15 @@ describe('application errors', () => {
     expect(toAppError(original)).toBe(original);
   });
 
+  it('preserves optional file guidance', () => {
+    const error = new AppError('PDF 文件不存在：resume.pdf', {
+      code: 'PDF_NOT_FOUND',
+      fileGuidance: { kind: 'pdf', inputPath: 'resume.pdf' },
+    });
+
+    expect(error.fileGuidance).toEqual({ kind: 'pdf', inputPath: 'resume.pdf' });
+  });
+
   it('hides unexpected internal details', () => {
     const result = toAppError(new Error('secret implementation detail'));
 
