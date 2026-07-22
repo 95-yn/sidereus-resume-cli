@@ -20,22 +20,25 @@
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
-    "check": "npm run lint && npm run typecheck && npm test && npm run build"
+    "check": "npm run lint && npm run typecheck && npm test && npm run build",
+    "demo:pdf": "node scripts/create-demo-resume.mjs",
+    "demo": "npm run build && npm run demo:pdf && node dist/cli.js parse examples/resume.pdf && node dist/cli.js extract examples/resume.pdf --mock && node dist/cli.js score examples/resume.pdf --jd examples/jd.txt --mock"
   },
   "dependencies": {
-    "commander": "latest",
-    "openai": "latest",
-    "pdf-parse": "latest",
-    "zod": "latest"
+    "commander": "^15.0.0",
+    "openai": "^6.48.0",
+    "pdf-parse": "^2.4.5",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@eslint/js": "latest",
-    "@types/node": "latest",
-    "eslint": "latest",
-    "pdfkit": "latest",
-    "tsup": "latest",
-    "typescript": "latest",
-    "typescript-eslint": "latest",
-    "vitest": "latest"
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^26.1.1",
+    "@types/pdfkit": "^0.17.5",
+    "eslint": "^10.7.0",
+    "pdfkit": "^0.19.1",
+    "tsup": "^8.5.1",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.65.0",
+    "vitest": "^4.1.10"
   }
 }
