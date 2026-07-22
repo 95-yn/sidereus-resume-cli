@@ -17,9 +17,9 @@ import type {
   ScoreResume,
   WriteResult,
 } from './types.js';
+import { renderAppError, terminalSafeDisplay } from './utils/error-output.js';
 import { createLogger } from './utils/logger.js';
 import { writeResult } from './utils/output.js';
-import { renderAppError } from './utils/error-output.js';
 import {
   createProgress,
   shouldShowProgress,
@@ -208,7 +208,7 @@ export async function runCli(
     }
     io.stderr(renderedError);
     if (program.opts<{ verbose?: boolean }>().verbose) {
-      io.stderr(`[debug] code=${appError.code}`);
+      writeDiagnostic(io, `[debug] code=${appError.code}`);
     }
     return appError.exitCode;
   } finally {
@@ -217,7 +217,14 @@ export async function runCli(
 }
 
 function loggerFor(program: Command, io: ProgramIo) {
-  return createLogger(Boolean(program.opts<{ verbose?: boolean }>().verbose), io.stderr);
+  return createLogger(
+    Boolean(program.opts<{ verbose?: boolean }>().verbose),
+    (message) => writeDiagnostic(io, message),
+  );
+}
+
+function writeDiagnostic(io: ProgramIo, message: string): void {
+  io.stderr(terminalSafeDisplay(message));
 }
 
 function progressFor(program: Command, io: ProgramIo, scope: ProgressScope): Progress {

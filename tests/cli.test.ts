@@ -346,4 +346,38 @@ describe('CLI', () => {
     expect(streams.stderr).toHaveBeenCalledWith('错误：操作失败，请使用 --verbose 查看错误代码。');
     expect(streams.stderr).toHaveBeenLastCalledWith('[debug] code=PDF_NOT_FOUND');
   });
+
+  it.each([
+    ['parse', ['--verbose', 'parse', unsafePath], `[debug] parse: ${safePath}`],
+    ['extract', ['--verbose', 'extract', unsafePath, '--mock'],
+      `[debug] extract (mock): ${safePath}`],
+    ['score', ['--verbose', 'score', unsafePath, '--jd', 'jd.txt', '--mock'],
+      `[debug] score (mock): ${safePath}`],
+  ] as const)('sanitizes attacker-controlled paths in %s diagnostics', async (
+    _command,
+    args,
+    expected,
+  ) => {
+    const streams = io();
+
+    expect(await runCli([...args], dependencies(), streams)).toBe(0);
+    expect(streams.stderr).toHaveBeenCalledWith(expected);
+    expect(streams.stderr.mock.calls.flat().join('')).not.toContain(unsafePath);
+  });
+
+  it('sanitizes application error codes in verbose diagnostics', async () => {
+    const deps = dependencies();
+    deps.readPdf = vi.fn().mockRejectedValue(
+      new AppError('失败', { code: 'BAD\n\u001b]0;pwn\u0007\u009b31m\u202e' }),
+    );
+    const streams = io();
+
+    expect(await runCli(['--verbose', 'parse', 'resume.pdf'], deps, streams)).toBe(1);
+    expect(streams.stderr).toHaveBeenLastCalledWith(
+      '[debug] code=BAD\\n\\u001B]0;pwn\\u0007\\u009B31m\\u202E',
+    );
+  });
 });
+
+const unsafePath = 'resume\n\u001b]0;pwn\u0007\u009b31m\u202e.pdf';
+const safePath = 'resume\\n\\u001B]0;pwn\\u0007\\u009B31m\\u202E.pdf';

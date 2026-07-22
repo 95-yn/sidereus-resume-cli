@@ -211,6 +211,56 @@ describe('renderAppError', () => {
     expect(rendered).toContain('重试：resume-cli parse -o out.txt ./candidate.pdf');
   });
 
+  it('skips a separate env-file value that looks like a command', async () => {
+    const error = new AppError('PDF 文件不存在：resum.pdf', {
+      code: 'PDF_NOT_FOUND',
+      fileGuidance: { kind: 'pdf', inputPath: 'resum.pdf' },
+    });
+
+    const rendered = await renderAppError(error, {
+      cwd: '/workspace',
+      args: ['--env-file', 'score', 'parse', 'resum.pdf'],
+      suggestFiles: async () => ['./resume.pdf'],
+    });
+
+    expect(rendered).toContain(
+      '重试：resume-cli --env-file score parse ./resume.pdf',
+    );
+  });
+
+  it('skips an equals env-file value that looks like a command', async () => {
+    const error = new AppError('PDF 文件不存在：resum.pdf', {
+      code: 'PDF_NOT_FOUND',
+      fileGuidance: { kind: 'pdf', inputPath: 'resum.pdf' },
+    });
+
+    const rendered = await renderAppError(error, {
+      cwd: '/workspace',
+      args: ['--verbose', '--env-file=extract', '--no-progress', 'parse', 'resum.pdf'],
+      suggestFiles: async () => ['./resume.pdf'],
+    });
+
+    expect(rendered).toContain(
+      '重试：resume-cli --verbose --env-file=extract --no-progress parse ./resume.pdf',
+    );
+  });
+
+  it('does not guess a command after an unknown root option', async () => {
+    const error = new AppError('PDF 文件不存在：resum.pdf', {
+      code: 'PDF_NOT_FOUND',
+      fileGuidance: { kind: 'pdf', inputPath: 'resum.pdf' },
+    });
+
+    const rendered = await renderAppError(error, {
+      cwd: '/workspace',
+      args: ['--unknown', 'score', 'parse', 'resum.pdf'],
+      suggestFiles: async () => ['./resume.pdf'],
+    });
+
+    expect(rendered).toContain('提示：请检查相对路径，或改用绝对路径。');
+    expect(rendered).not.toContain('重试：');
+  });
+
   it('falls back instead of guessing after an unknown PDF option', async () => {
     const error = new AppError('PDF 文件不存在：missing.pdf', {
       code: 'PDF_NOT_FOUND',

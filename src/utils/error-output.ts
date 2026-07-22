@@ -13,6 +13,7 @@ const SAFE_SHELL_ARGUMENT = /^[A-Za-z0-9_./:@%+=,-]+$/;
 const PDF_COMMANDS = new Set(['parse', 'extract', 'score']);
 const PDF_VALUE_OPTIONS = new Set(['-o', '--output', '--jd', '--env-file']);
 const PDF_BOOLEAN_OPTIONS = new Set(['--mock', '--no-progress', '-v', '--verbose']);
+const ROOT_BOOLEAN_OPTIONS = new Set(['--no-progress', '-v', '--verbose']);
 
 interface RetryTarget {
   index: number;
@@ -37,7 +38,7 @@ function isUnsafeTerminalCharacter(character: string): boolean {
   );
 }
 
-function terminalSafeDisplay(value: string): string {
+export function terminalSafeDisplay(value: string): string {
   return Array.from(value)
     .map((character) => {
       if (character === '\n') return '\\n';
@@ -51,8 +52,8 @@ function terminalSafeDisplay(value: string): string {
 }
 
 function pdfRetryTarget(args: string[]): RetryTarget | undefined {
-  const commandIndex = args.findIndex((argument) => PDF_COMMANDS.has(argument));
-  if (commandIndex === -1) return undefined;
+  const commandIndex = pdfCommandIndex(args);
+  if (commandIndex === undefined) return undefined;
 
   let afterSeparator = false;
   for (let index = commandIndex + 1; index < args.length; index += 1) {
@@ -78,6 +79,24 @@ function pdfRetryTarget(args: string[]): RetryTarget | undefined {
     if (argument.startsWith('-')) return undefined;
 
     return { index, value: argument };
+  }
+
+  return undefined;
+}
+
+function pdfCommandIndex(args: string[]): number | undefined {
+  for (let index = 0; index < args.length; index += 1) {
+    const argument = args[index]!;
+    if (PDF_COMMANDS.has(argument)) return index;
+    if (argument === '--env-file') {
+      if (index + 1 >= args.length) return undefined;
+      index += 1;
+      continue;
+    }
+    if (argument.startsWith('--env-file=')) continue;
+    if (ROOT_BOOLEAN_OPTIONS.has(argument)) continue;
+
+    return undefined;
   }
 
   return undefined;
