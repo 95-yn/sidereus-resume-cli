@@ -1,5 +1,5 @@
-import { readdir, stat } from 'node:fs/promises';
-import type { Dirent } from 'node:fs';
+import { opendir, stat } from 'node:fs/promises';
+import type { Dir, Dirent } from 'node:fs';
 import { basename, dirname, isAbsolute, relative, resolve, sep } from 'node:path';
 
 export type FileSuggestionKind = 'pdf' | 'jd' | 'env';
@@ -78,6 +78,32 @@ function displayPath(path: string, cwd: string): string {
   return `./${pathFromCwd.split(sep).join('/')}`;
 }
 
+async function readBoundedEntries(directory: string, limit: number): Promise<Dirent<string>[]> {
+  const entries: Dirent<string>[] = [];
+  let handle: Dir | undefined;
+
+  try {
+    handle = await opendir(directory);
+    while (entries.length < limit) {
+      const entry = await handle.read();
+      if (entry === null) break;
+      entries.push(entry);
+    }
+  } catch {
+    // Permission and race errors leave any entries already read available to the caller.
+  } finally {
+    if (handle !== undefined) {
+      try {
+        await handle.close();
+      } catch {
+        // The handle may already be closed or invalidated by a filesystem race.
+      }
+    }
+  }
+
+  return entries;
+}
+
 export async function suggestFiles(
   inputPath: string,
   kind: FileSuggestionKind,
@@ -92,34 +118,29 @@ export async function suggestFiles(
   const root = await suggestionRoot(inputPath, cwd);
   const candidates: string[] = [];
   let inspectedEntries = 0;
+  const directories = [{ path: root, depth: 0 }];
 
-  const scan = async (directory: string, depth: number): Promise<void> => {
-    let entries: Dirent<string>[];
-    try {
-      entries = await readdir(directory, { withFileTypes: true });
-    } catch {
-      return;
-    }
+  for (let directoryIndex = 0; directoryIndex < directories.length; directoryIndex += 1) {
+    if (inspectedEntries >= maxEntries) break;
 
+    const directory = directories[directoryIndex]!;
+    const remainingEntries = maxEntries - inspectedEntries;
+    const entries = await readBoundedEntries(directory.path, remainingEntries);
+    inspectedEntries += entries.length;
     entries.sort((left, right) => left.name.localeCompare(right.name));
 
     for (const entry of entries) {
-      if (inspectedEntries >= maxEntries) return;
-      inspectedEntries += 1;
-
-      const path = resolve(directory, entry.name);
-      if (entry.isDirectory()) {
-        if (entry.name.startsWith('.') || EXCLUDED_DIRECTORIES.has(entry.name)) continue;
-        if (depth < maxDepth) await scan(path, depth + 1);
-        continue;
-      }
-
       if (!entry.isFile() || (kind !== 'env' && entry.name.startsWith('.'))) continue;
-      if (matchesKind(entry.name, kind)) candidates.push(path);
+      if (matchesKind(entry.name, kind)) candidates.push(resolve(directory.path, entry.name));
     }
-  };
 
-  await scan(root, 0);
+    if (directory.depth >= maxDepth) continue;
+    for (const entry of entries) {
+      if (!entry.isDirectory()) continue;
+      if (entry.name.startsWith('.') || EXCLUDED_DIRECTORIES.has(entry.name)) continue;
+      directories.push({ path: resolve(directory.path, entry.name), depth: directory.depth + 1 });
+    }
+  }
 
   const target = basename(inputPath).toLowerCase();
   candidates.sort((left, right) => {

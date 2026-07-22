@@ -1,14 +1,22 @@
-import { mkdtemp, mkdir, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { suggestFiles } from '../src/utils/file-suggestions.js';
+
+const tempRoots: string[] = [];
+
+afterEach(async () => {
+  const roots = tempRoots.splice(0);
+  await Promise.all(roots.map((root) => rm(root, { recursive: true, force: true })));
+});
 
 async function createTree(
   files: Record<string, string> = {},
   directories: string[] = [],
 ): Promise<string> {
   const root = await mkdtemp(join(tmpdir(), 'resume-cli-suggestions-'));
+  tempRoots.push(root);
 
   for (const directory of directories) {
     await mkdir(join(root, directory), { recursive: true });
@@ -137,9 +145,24 @@ describe('suggestFiles', () => {
   });
 
   it('stops inspecting entries when the entry budget is exhausted', async () => {
-    const cwd = await createTree({ 'a-not-a-pdf.txt': '', 'resume.pdf': '' });
+    const cwd = await createTree({ 'resume.pdf': '', 'cv.pdf': '' });
 
-    await expect(suggestFiles('resum.pdf', 'pdf', { cwd, maxEntries: 1 })).resolves.toEqual([]);
+    await expect(
+      suggestFiles('resum.pdf', 'pdf', { cwd, maxEntries: 1, limit: 10 }),
+    ).resolves.toHaveLength(1);
+  });
+
+  it('checks root files before a wide child directory can exhaust the entry budget', async () => {
+    const files: Record<string, string> = {};
+    for (let index = 0; index < 500; index += 1) {
+      files[`a-many/decoy-${String(index).padStart(3, '0')}.txt`] = '';
+    }
+    files['resume.pdf'] = '';
+    const cwd = await createTree(files);
+
+    await expect(suggestFiles('resum.pdf', 'pdf', { cwd, maxEntries: 10 })).resolves.toEqual([
+      './resume.pdf',
+    ]);
   });
 
   it('returns deterministic results regardless of directory enumeration order', async () => {
