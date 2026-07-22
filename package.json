@@ -2,6 +2,15 @@
   "name": "sidereus-resume-cli",
   "version": "1.0.0",
   "description": "AI-powered PDF resume parsing and JD matching CLI",
+  "license": "MIT",
+  "keywords": [
+    "resume",
+    "cli",
+    "pdf",
+    "deepseek",
+    "openai",
+    "typescript"
+  ],
   "type": "module",
   "bin": {
     "resume-cli": "dist/cli.js"
@@ -14,6 +23,9 @@
   "engines": {
     "node": ">=20"
   },
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "tsup",
     "test": "vitest run",
@@ -22,7 +34,9 @@
     "lint": "eslint .",
     "check": "npm run lint && npm run typecheck && npm test && npm run build",
     "demo:pdf": "node scripts/create-demo-resume.mjs",
-    "demo": "npm run build && npm run demo:pdf && node dist/cli.js parse examples/resume.pdf && node dist/cli.js extract examples/resume.pdf --mock && node dist/cli.js score examples/resume.pdf --jd examples/jd.txt --mock"
+    "demo": "npm run build && npm run demo:pdf && node dist/cli.js parse examples/resume.pdf && node dist/cli.js extract examples/resume.pdf --mock && node dist/cli.js score examples/resume.pdf --jd examples/jd.txt --mock",
+    "prepare": "npm run build",
+    "prepack": "npm run check"
   },
   "dependencies": {
     "commander": "^15.0.0",
