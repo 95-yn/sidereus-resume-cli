@@ -27,6 +27,15 @@ describe('loadEnvironment', () => {
     await expect(loadEnvironment({ cwd, env: {} })).resolves.toBeUndefined();
   });
 
+  it('does not attach guidance when the implicit .env path is a directory', async () => {
+    const cwd = await tempDirectory();
+    await mkdir(join(cwd, '.env'));
+    const error = await loadEnvironment({ cwd, env: {} }).catch((cause: unknown) => cause);
+
+    expect(error).toMatchObject({ code: 'ENV_FILE_NOT_FILE', exitCode: 2 });
+    expect(error).toMatchObject({ fileGuidance: undefined });
+  });
+
   it('loads an explicitly named file', async () => {
     const cwd = await tempDirectory();
     await mkdir(join(cwd, 'config'));
@@ -40,17 +49,35 @@ describe('loadEnvironment', () => {
 
   it('rejects a missing explicit file', async () => {
     const cwd = await tempDirectory();
-    await expect(
-      loadEnvironment({ cwd, env: {}, envFile: 'missing.env' }),
-    ).rejects.toMatchObject({ code: 'ENV_FILE_NOT_FOUND', exitCode: 2 });
+    const error = await loadEnvironment({ cwd, env: {}, envFile: 'missing.env' }).catch(
+      (cause: unknown) => cause,
+    );
+
+    expect(error).toMatchObject({
+      code: 'ENV_FILE_NOT_FOUND',
+      exitCode: 2,
+    });
+    expect((error as { fileGuidance: unknown }).fileGuidance).toEqual({
+      kind: 'env',
+      inputPath: 'missing.env',
+    });
   });
 
   it('rejects an explicit directory', async () => {
     const cwd = await tempDirectory();
     await mkdir(join(cwd, 'config.env'));
-    await expect(
-      loadEnvironment({ cwd, env: {}, envFile: 'config.env' }),
-    ).rejects.toMatchObject({ code: 'ENV_FILE_NOT_FILE', exitCode: 2 });
+    const error = await loadEnvironment({ cwd, env: {}, envFile: 'config.env' }).catch(
+      (cause: unknown) => cause,
+    );
+
+    expect(error).toMatchObject({
+      code: 'ENV_FILE_NOT_FILE',
+      exitCode: 2,
+    });
+    expect((error as { fileGuidance: unknown }).fileGuidance).toEqual({
+      kind: 'env',
+      inputPath: 'config.env',
+    });
   });
 
   it('maps dotenv parsing errors without exposing content', async () => {
@@ -63,6 +90,7 @@ describe('loadEnvironment', () => {
 
     expect(error).toMatchObject({ code: 'ENV_FILE_INVALID', exitCode: 2 });
     expect(String(error)).not.toContain('SECRET=value');
+    expect(error).toMatchObject({ fileGuidance: undefined });
   });
 
   it('does not override variables provided by the parent process', async () => {

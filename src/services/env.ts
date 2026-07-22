@@ -22,8 +22,9 @@ export async function loadEnvironment(
 ): Promise<void> {
   const cwd = options.cwd ?? process.cwd();
   const env = options.env ?? process.env;
-  const explicit = options.envFile !== undefined;
-  const path = resolve(cwd, options.envFile ?? '.env');
+  const inputPath = options.envFile;
+  const explicit = inputPath !== undefined;
+  const path = resolve(cwd, inputPath ?? '.env');
   let fileStat;
 
   try {
@@ -36,6 +37,9 @@ export async function loadEnvironment(
       code: 'ENV_FILE_NOT_FOUND',
       exitCode: 2,
       cause,
+      ...(inputPath === undefined
+        ? {}
+        : { fileGuidance: { kind: 'env' as const, inputPath } }),
     });
   }
 
@@ -43,6 +47,9 @@ export async function loadEnvironment(
     throw new AppError(`环境配置路径不是文件：${path}`, {
       code: 'ENV_FILE_NOT_FILE',
       exitCode: 2,
+      ...(inputPath === undefined
+        ? {}
+        : { fileGuidance: { kind: 'env' as const, inputPath } }),
     });
   }
 

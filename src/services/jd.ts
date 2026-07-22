@@ -13,6 +13,7 @@ export async function readJd(inputPath: string): Promise<string> {
       code: 'JD_NOT_FOUND',
       exitCode: 2,
       cause,
+      fileGuidance: { kind: 'jd', inputPath },
     });
   }
 
@@ -20,6 +21,7 @@ export async function readJd(inputPath: string): Promise<string> {
     throw new AppError(`JD 路径不是文件：${inputPath}`, {
       code: 'JD_NOT_FILE',
       exitCode: 2,
+      fileGuidance: { kind: 'jd', inputPath },
     });
   }
 

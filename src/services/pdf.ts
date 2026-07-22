@@ -19,6 +19,7 @@ export async function readPdf(
       code: 'PDF_NOT_FOUND',
       exitCode: 2,
       cause,
+      fileGuidance: { kind: 'pdf', inputPath },
     });
   }
 
@@ -26,6 +27,7 @@ export async function readPdf(
     throw new AppError(`PDF 路径不是文件：${inputPath}`, {
       code: 'PDF_NOT_FILE',
       exitCode: 2,
+      fileGuidance: { kind: 'pdf', inputPath },
     });
   }
 
