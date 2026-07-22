@@ -10,7 +10,7 @@
 - 语言：TypeScript（ESM）
 - CLI：Commander
 - PDF 文本提取：`pdf-parse`
-- AI：OpenAI Node SDK，默认模型 `gpt-4.1-mini`
+- AI：OpenAI Node SDK，默认模型 `gpt-5.6`
 - 数据校验：Zod
 - 测试：Vitest
 - 打包：tsup
@@ -58,7 +58,7 @@ resume-cli score <pdf_path> --jd <jd_path> [--mock] [--output <path>]
 1. 通过 parse 服务取得简历文本。
 2. `--mock` 模式根据文本生成确定性的候选人对象；正常模式调用 OpenAI。
 3. 清理并解析返回 JSON，再用 Zod 校验字段类型和嵌套教育经历。
-4. 输出格式化 JSON或保存到文件。
+4. 输出格式化 JSON 或保存到文件。
 
 结构化信息字段固定为：`name`、`phone`、`email`、`city`、`education[]` 和 `skills[]`。无法确认的标量字段使用空字符串，列表使用空数组，不臆造个人信息。
 
@@ -67,7 +67,7 @@ resume-cli score <pdf_path> --jd <jd_path> [--mock] [--output <path>]
 1. 读取简历文本和非空 JD 文本。
 2. `--mock` 模式基于技能关键词交集生成稳定评分；正常模式调用 OpenAI。
 3. Zod 校验 `overall_score`、`skill_score`、`experience_score`、`education_score` 均为 0–100 的整数，同时要求非空 `comment` 和至少一个面试问题。
-4. 输出格式化 JSON或保存到文件。
+4. 输出格式化 JSON 或保存到文件。
 
 ## AI 调用
 
