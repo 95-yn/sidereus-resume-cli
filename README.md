@@ -1,4 +1,4 @@
-# Resume CLI
+# Sidereus Resume CLI
 
 一个使用 TypeScript 编写的 AI 简历解析命令行工具。它可以读取本地 PDF 简历、提取结构化候选人信息，并根据岗位描述（JD）生成匹配评分与面试问题。
 
@@ -53,10 +53,10 @@ npm install -g ./sidereus-resume-cli-1.0.0.tgz
 resume-cli --version
 ```
 
-也可以从真实 GitHub 仓库安装，把示例中的所有者和仓库名替换为实际值：
+也可以直接从 GitHub 安装：
 
 ```bash
-npm install -g github:<owner>/<repository>
+npm install -g github:95-yn/sidereus-resume-cli
 resume-cli --help
 ```
 
