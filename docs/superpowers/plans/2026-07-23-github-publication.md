@@ -238,8 +238,8 @@ Expected: `visibility` is `PUBLIC`, `defaultBranchRef.name` is `main`, and the U
 Run:
 
 ```bash
-for path in README.md LICENSE package.json src/cli.ts tests/cli.test.ts; do
-  gh api "repos/95-yn/sidereus-resume-cli/contents/$path?ref=main" --silent
+for remote_file in README.md LICENSE package.json src/cli.ts tests/cli.test.ts; do
+  gh api "repos/95-yn/sidereus-resume-cli/contents/$remote_file?ref=main" --silent
 done
 ```
 
